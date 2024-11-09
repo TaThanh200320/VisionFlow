@@ -22,13 +22,14 @@ from image_storage import ImageStorage
 from logging_config import configure_logging
 from model_config import MODEL_CONFIG
 
+
 class MainApp:
     def __init__(self):
         configure_logging()  # 設定日誌
-        self.logger = logging.getLogger('MainApp')
-        self.time_logger = logging.getLogger('TimeLogger')
+        self.logger = logging.getLogger("MainApp")
+        self.time_logger = logging.getLogger("TimeLogger")
 
-        self.redis_host = 'redis'
+        self.redis_host = "redis"
         self.redis_port = 6379
         self.r = redis.Redis(host=self.redis_host, port=self.redis_port, db=0)
         self.image_storage = ImageStorage(self.r)
@@ -66,7 +67,7 @@ class MainApp:
     def init_models(self):
         start_time = time.time()
         # 從 MODEL_CONFIG 加載模型並初始化標註器
-        self.models = {}      # 用於存放模型的字典
+        self.models = {}  # 用於存放模型的字典
         self.annotators = {}  # 用於存放各模型的標註器
 
         for model_name, config in MODEL_CONFIG.items():
@@ -89,8 +90,7 @@ class MainApp:
                     color = annotator_settings.get("color", None)
                     if color:
                         annotators[annotator_name] = sv.BoxAnnotator(
-                            thickness=thickness,
-                            color=color
+                            thickness=thickness, color=color
                         )
                     else:
                         annotators[annotator_name] = sv.BoxAnnotator(
@@ -102,8 +102,7 @@ class MainApp:
                     color = annotator_settings.get("color", None)
                     if color:
                         annotators[annotator_name] = sv.RoundBoxAnnotator(
-                            thickness=thickness,
-                            color=color
+                            thickness=thickness, color=color
                         )
                     else:
                         annotators[annotator_name] = sv.RoundBoxAnnotator(
@@ -111,14 +110,16 @@ class MainApp:
                         )
                 elif annotator_type == "LabelAnnotator":
                     # 初始化 LabelAnnotator
-                    text_position = annotator_settings.get("text_position", "TOP_CENTER")
+                    text_position = annotator_settings.get(
+                        "text_position", "TOP_CENTER"
+                    )
                     text_thickness = annotator_settings.get("text_thickness", 2)
                     text_scale = annotator_settings.get("text_scale", 1)
                     position = getattr(sv.Position, text_position)
                     annotators[annotator_name] = sv.LabelAnnotator(
                         text_position=position,
                         text_thickness=text_thickness,
-                        text_scale=text_scale
+                        text_scale=text_scale,
                     )
                 else:
                     self.logger.warning(f"Unknown annotator type: {annotator_type}")
@@ -177,7 +178,9 @@ class MainApp:
 
         # 使用執行緒池來執行阻塞的同步函數
         loop = asyncio.get_event_loop()
-        image = await loop.run_in_executor(None, self.image_storage.fetch_image, redis_key)
+        image = await loop.run_in_executor(
+            None, self.image_storage.fetch_image, redis_key
+        )
 
         self.time_logger.info(
             f"Snapshot for camera {camera_id} fetched in {time.time() - start_time:.2f} seconds"
@@ -198,14 +201,12 @@ class MainApp:
             recognition_model = camera_info.get("recognition")
             if recognition_model in self.models:
                 self.call_model_single(
-                    camera_id,
-                    img,
-                    rectangles,
-                    recognition_model,
-                    camera_info
+                    camera_id, img, rectangles, recognition_model, camera_info
                 )
             else:
-                self.logger.warning(f"No valid recognition model for camera {camera_id}")
+                self.logger.warning(
+                    f"No valid recognition model for camera {camera_id}"
+                )
         else:
             self.logger.warning(f"No image fetched for camera {camera_id}")
 
@@ -260,7 +261,7 @@ class MainApp:
             model.names,
             camera_info,
             model_type,
-            trace_annotator
+            trace_annotator,
         )
         # 保存和通知
         timestamp = time.time()
@@ -280,7 +281,14 @@ class MainApp:
         )
 
     def annotate_image(
-        self, image, detections, rectangles, model_names, camera_info, model_name, trace_annotator
+        self,
+        image,
+        detections,
+        rectangles,
+        model_names,
+        camera_info,
+        model_name,
+        trace_annotator,
     ):
         annotated_image = image.copy()
         # 獲取該模型的標註器
@@ -319,8 +327,7 @@ class MainApp:
         # 使用 TraceAnnotator
         if trace_annotator:
             annotated_image = trace_annotator.annotate(
-                scene=annotated_image,
-                detections=detections
+                scene=annotated_image, detections=detections
             )
 
         return annotated_image, detection_flag, label
@@ -337,20 +344,18 @@ class MainApp:
         label,
     ):
         start_time = time.time()
-        annotated_img_path = os.path.join(
-            self.ANNOTATED_SAVE_DIR, f"{camera_id}_{timestamp}.jpg"
-        )
-        cv2.imwrite(annotated_img_path, annotated_image)
-        self.logger.info(f"Annotated image saved to {annotated_img_path}")
+        # annotated_img_path = os.path.join(
+        #     self.ANNOTATED_SAVE_DIR, f"{camera_id}_{timestamp}.jpg"
+        # )
+        # cv2.imwrite(annotated_img_path, annotated_image)
+        # self.logger.info(f"Annotated image saved to {annotated_img_path}")
 
-        # 將最新的圖像保存到串流媒體目錄
-        stream_img_path = os.path.join(self.STREAM_SAVE_DIR, f"{camera_id}.jpg")
-        cv2.imwrite(
-            stream_img_path, annotated_image, [cv2.IMWRITE_JPEG_QUALITY, 70]
-        )
-        self.logger.info(
-            f"Latest image (with or without annotations) saved to {stream_img_path} for camera {camera_id}"
-        )
+        # # 將最新的圖像保存到串流媒體目錄
+        # stream_img_path = os.path.join(self.STREAM_SAVE_DIR, f"{camera_id}.jpg")
+        # cv2.imwrite(stream_img_path, annotated_image, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        # self.logger.info(
+        #     f"Latest image (with or without annotations) saved to {stream_img_path} for camera {camera_id}"
+        # )
         redis_key = f"camera_{camera_id}_boxed_image"
         self.image_storage.save_image(redis_key, annotated_image)
 
@@ -373,7 +378,9 @@ class MainApp:
                 else:
                     self.logger.debug(f"Camera list: {camera_list}")
 
-                camera_list_by_id = {int(camera["id"]): camera for camera in camera_list}
+                camera_list_by_id = {
+                    int(camera["id"]): camera for camera in camera_list
+                }
 
                 # 構建攝影機ID與模型類型的對應關係
                 # 取得攝影機狀態
@@ -393,7 +400,9 @@ class MainApp:
                         camera_info = camera_list_by_id.get(camera_id)
                         if camera_info:
                             tasks.append(
-                                self.process_camera(session, camera_id, camera_info, None)
+                                self.process_camera(
+                                    session, camera_id, camera_info, None
+                                )
                             )
 
                 if tasks:
@@ -405,6 +414,7 @@ class MainApp:
                 self.time_logger.info(
                     f"Processing completed in {time.time() - start_time:.2f} seconds"
                 )
+
 
 if __name__ == "__main__":
     app = MainApp()

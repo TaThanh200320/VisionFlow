@@ -1,19 +1,18 @@
 import redis
-r = redis.Redis(host='redis', port=6379, db=0)
+
+r = redis.Redis(host="redis", port=6379, db=0)
 # 假設攝影機的 URL 列表已經提前準備好
 camera_urls = [
-"rtsp://user:password@ip:port/",
-"rtsp://user:password@ip:port/",
-"rtsp://user:password@ip:port/",
+    "rtsp://user:password@ip:port/",
+    "rtsp://user:password@ip:port/",
+    "rtsp://user:password@ip:port/",
 ]
-
-
 
 
 count = 0
 # 清空舊的攝影機列表
-for worker_id in range(1, 7):
-    worker_key = f'worker_{worker_id}_urls'
+for worker_id in range(1, 10):
+    worker_key = f"worker_{worker_id}_urls"
     r.delete(worker_key)
     count += 1
 
@@ -25,6 +24,6 @@ for worker_id in range(1, 7):
 #     count += 1
 
 # 發布更新事件給所有工作器
-for worker_id in range(1, 4):
-    worker_key = f'worker_{worker_id}_urls'
-    r.publish(f'{worker_key}_update', 'updated')
+for worker_id in range(1, 10):
+    worker_key = f"worker_{worker_id}_urls"
+    r.publish(f"{worker_key}_update", "updated")

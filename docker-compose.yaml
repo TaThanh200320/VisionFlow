@@ -1,10 +1,9 @@
 version: "3.0"
 
 services:
-
   # # Database
   db:
-    container_name: 'db'
+    container_name: "db"
     image: postgres:15
     restart: always
     environment:
@@ -15,6 +14,16 @@ services:
       - "5432:5432"
     volumes:
       - ./db/:/var/lib/postgresql/data/
+    networks:
+      - service-networks
+
+  admin:
+    image: adminer
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - 8080:8080
     networks:
       - service-networks
 
@@ -40,6 +49,8 @@ services:
   camera_ctrl:
     container_name: camera_ctrl_dev
     image: danlee01633060/camera_ctrl:lastest
+    depends_on:
+      - backend
     build:
       context: ./camera_ctrler
       dockerfile: cameractrlDockerfile
@@ -62,6 +73,9 @@ services:
   objectrecognition:
     container_name: object_recognition
     image: danlee01633060/object_recognition:latest
+    depends_on:
+      - backend
+      - camera_ctrl
     build:
       context: ./object_recognition
       dockerfile: objectrecognitionDockerfile
@@ -79,21 +93,19 @@ services:
       - API_SERVICE_URL=http://backend:5000
       - TOKEN=hf_xxxxxx
       - DATASETNAME=danlee01633060/imgtest
-    # privileged: true
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [ gpu ]
-    command: sh -c "sleep 30666"
-    # command: python app.py
+    privileged: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # command: sh -c "sleep 30666"
+    command: python app.py
     networks:
       - service-networks
 
 networks:
   service-networks:
     driver: bridge
-
-
